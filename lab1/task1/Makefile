@@ -1,13 +1,15 @@
 CC = gcc
-CFLAGS=-Wall -Wextra
-TARGET=SimpleCache
-TARGETL1=L1Cache
+CFLAGS = -Wall -Wextra
+TARGET = L1Cache
+TARGETL1 = L1Cache
 
 all:
-	$(CC) $(CFLAGS) SimpleProgram.c SimpleCache.c -o $(TARGET)
+	$(CC) $(CFLAGS) SimpleProgram1.c L1Cache.c -o $(TARGET)
 
-l1:
-	$(CC) $(CFLAGS) L1Cache.c -o $(TARGET) 
+test:
+	$(CC) $(CFLAGS) SimpleProgram1.c L1Cache.c -o $(TARGET)
+	./$(TARGET) > myout.txt
+	diff myout.txt ../tests/results_L1.txt >> diff.txt
 
 clean:
-	rm $(TARGET)
+	rm -f $(TARGET) *.txt
