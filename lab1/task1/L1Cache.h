@@ -28,7 +28,6 @@ typedef struct CacheLine {
   uint8_t Valid;
   uint8_t Dirty;
   uint32_t Tag;
-  uint8_t Block[BLOCK_SIZE];
 } CacheLine;
 
 typedef struct Cache {

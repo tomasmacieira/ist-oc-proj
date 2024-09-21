@@ -4,7 +4,7 @@ uint8_t L1Cache[L1_SIZE];
 uint8_t L2Cache[L2_SIZE];
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
-Cache SimpleCache;
+Cache Cache1;
 
 /**************** Time Manipulation ***************/
 void resetTime() { time = 0; }
@@ -30,7 +30,7 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 /*********************** L1 cache *************************/
 
-void initCache() { SimpleCache.init = 0; }
+void initCache() { Cache1.init = 0; }
 
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
@@ -38,18 +38,18 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
-  if (SimpleCache.init == 0) {
+  if (Cache1.init == 0) {
     for (index = 0; index < L1_LINENO; index++) { // Go through every line in the block
-        SimpleCache.lines[index].Valid = 0;
+        Cache1.lines[index].Valid = 0;
     }
-    SimpleCache.init = 1;
+    Cache1.init = 1;
   }
 
   offset = address & offset_mask;                 // Get offset
   index = (address & idx_mask) >> 6;              // Get index
   Tag = address >> 14;                // Get tage
 
-  CacheLine *Line = &SimpleCache.lines[index];
+  CacheLine *Line = &Cache1.lines[index];
 
   MemAddress = address >> 6;                      // Remove offset from the address
   MemAddress = MemAddress << 6;                   // Restore removed bits with 0's
