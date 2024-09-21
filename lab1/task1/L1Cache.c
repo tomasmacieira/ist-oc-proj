@@ -47,7 +47,7 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   offset = address & offset_mask;                 // Get offset
   index = (address & idx_mask) >> 6;              // Get index
-  Tag = (address & tag_mask) >> 14;                // Get tage
+  Tag = address >> 14;                // Get tage
 
   CacheLine *Line = &SimpleCache.lines[index];
 
@@ -60,7 +60,7 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
     accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
 
     if ((Line->Valid) && (Line->Dirty)) {         // line has dirty block
-      MemAddress = Line->Tag << 6;                // get address of the block in memory
+      MemAddress = (Line->Tag << 14) | (index << 6);                // get address of the block in memory
       accessDRAM(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
     }
 
