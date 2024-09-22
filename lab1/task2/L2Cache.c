@@ -62,12 +62,12 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   if (!Line->Valid || Line->Tag != Tag) {               // if block not present - miss
     //accessDRAM(MemAddress, TempBlock, MODE_READ); 
-    accessL2(address, data, MODE_READ, TempBlock);      // search for block in L2
+    accessL2(address, TempBlock, MODE_READ);      // search for block in L2
 
     if ((Line->Valid) && (Line->Dirty)) {                                               // line has dirty block
       MemAddress = (Line->Tag << 14) | (index << 6);                                    // get address of the block in memory
       //accessDRAM(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
-      accessL2(address, data, MODE_WRITE, TempBlock);
+      accessL2(address, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);
     }
 
     memcpy(&(L1Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE); // copy new block to cache line
@@ -88,7 +88,7 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   }
 }
 
-void accessL2(uint32_t address, uint8_t *data, uint32_t mode, uint8_t *block) {
+void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
   uint32_t index, Tag, MemAddress, offset;
   uint8_t TempBlock[BLOCK_SIZE];
@@ -112,11 +112,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode, uint8_t *block) {
 
   /* access Cache*/
 
-  //printf("Line->Valid= %d\n", Line->Valid);
-  //printf("Line->Tag= %d\n", Line->Tag);
-  //printf("TAG= %d\n", Tag);
   if (!Line->Valid || Line->Tag != Tag) {                           // if block not present - miss
-    //printf("L2 Entrou dram\n");
     accessDRAM(MemAddress, TempBlock, MODE_READ);                   // get new block from DRAM
 
     if ((Line->Valid) && (Line->Dirty)) {                           // line has dirty block
@@ -131,20 +127,14 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode, uint8_t *block) {
   } // if miss, then replaced with the correct block
 
   if (mode == MODE_READ) {    // read data from cache line
-    //printf("read l2\n");
-    memcpy(block, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);      // Write back to L1
-    memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);
+    memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1
     time += L2_READ_TIME;
-    //printf("time = %u\n", time);
   }
 
   if (mode == MODE_WRITE) { // write data from cache line
-    //printf("write l2\n");
-    memcpy(block, data, WORD_SIZE);                                           // Write back to L1
-    memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);
+    memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);                     // Write back to L1
     time += L2_WRITE_TIME;
     Line->Dirty = 1;
-    //printf("time = %u\n", time);
   }
 }
 

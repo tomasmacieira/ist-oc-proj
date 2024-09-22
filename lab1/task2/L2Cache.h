@@ -24,7 +24,7 @@ void accessDRAM(uint32_t, uint8_t *, uint32_t);
 
 void initCache();
 void accessL1(uint32_t, uint8_t *, uint32_t);
-void accessL2(uint32_t, uint8_t *, uint32_t, uint8_t *);
+void accessL2(uint32_t, uint8_t *, uint32_t);
 
 typedef struct CacheLine {
   uint8_t Valid;
