@@ -13,7 +13,8 @@ uint32_t getTime();
 
 /****************  Constants & Masks ***************/
 long int offset_mask = 0b0000000000111111;    // offset bits
-long int idx_mask    = 0b0111111111000000;    // index bits
+long int l1_idx_mask = 0b0011111111000000;    // L1 index bits
+long int l2_idx_mask = 0b0111111111000000;    // L2 index bits
 long int tag_mask    = 0b1000000000000000;    // tag bits
 
 /****************  RAM memory (byte addressable) ***************/

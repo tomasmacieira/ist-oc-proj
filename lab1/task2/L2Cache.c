@@ -31,7 +31,10 @@ void accessDRAM(uint32_t address, uint8_t *data, uint32_t mode) {
 
 /*********************** L1 cache *************************/
 
-void initCache() { Cache1.init = 0; }
+void initCache() { 
+  Cache1.init = 0;
+  Cache2.init = 0; 
+}
 
 void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
@@ -47,8 +50,8 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   }
 
   offset = address & offset_mask;                 // Get offset
-  index = (address & idx_mask) >> 6;              // Get index
-  Tag = address >> 15;                            // Get tag
+  index = (address & l1_idx_mask) >> 6;           // Get index
+  Tag = address >> 14;                            // Get tag
 
   CacheLine *Line = &Cache1.lines[index];
 
@@ -99,8 +102,8 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode, uint8_t *block) {
   }
 
   offset = address & offset_mask;                 // Get offset
-  index = (address & idx_mask) >> 6;              // Get index
-  Tag = address >> 14;                            // Get tag
+  index = (address & l2_idx_mask) >> 6;           // Get index
+  Tag = address >> 15;                            // Get tag
 
   CacheLine *Line = &Cache2.lines[index];
 
@@ -109,12 +112,16 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode, uint8_t *block) {
 
   /* access Cache*/
 
-  if (!Line->Valid || Line->Tag != Tag) {         // if block not present - miss
-    accessDRAM(MemAddress, TempBlock, MODE_READ); // get new block from DRAM
+  //printf("Line->Valid= %d\n", Line->Valid);
+  //printf("Line->Tag= %d\n", Line->Tag);
+  //printf("TAG= %d\n", Tag);
+  if (!Line->Valid || Line->Tag != Tag) {                           // if block not present - miss
+    //printf("L2 Entrou dram\n");
+    accessDRAM(MemAddress, TempBlock, MODE_READ);                   // get new block from DRAM
 
     if ((Line->Valid) && (Line->Dirty)) {                           // line has dirty block
-      MemAddress = (Line->Tag << 14) | (index << 6);                // get address of the block in memory
-      accessDRAM(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
+      MemAddress = (Line->Tag << 15) | (index << 6);                // get address of the block in memory
+      accessDRAM(MemAddress, &(L2Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
     }
 
     memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE); // copy new block to cache line
@@ -124,16 +131,20 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode, uint8_t *block) {
   } // if miss, then replaced with the correct block
 
   if (mode == MODE_READ) {    // read data from cache line
+    //printf("read l2\n");
     memcpy(block, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);      // Write back to L1
     memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);
     time += L2_READ_TIME;
+    //printf("time = %u\n", time);
   }
 
   if (mode == MODE_WRITE) { // write data from cache line
+    //printf("write l2\n");
     memcpy(block, data, WORD_SIZE);                                           // Write back to L1
     memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);
     time += L2_WRITE_TIME;
     Line->Dirty = 1;
+    //printf("time = %u\n", time);
   }
 }
 
