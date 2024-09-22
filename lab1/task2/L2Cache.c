@@ -61,13 +61,11 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
   /* access Cache*/
 
   if (!Line->Valid || Line->Tag != Tag) {               // if block not present - miss
-    //accessDRAM(MemAddress, TempBlock, MODE_READ); 
     accessL2(address, TempBlock, MODE_READ);      // search for block in L2
 
     if ((Line->Valid) && (Line->Dirty)) {                                               // line has dirty block
       MemAddress = (Line->Tag << 14) | (index << 6);                                    // get address of the block in memory
-      //accessDRAM(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
-      accessL2(address, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);
+      accessL2(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);     // then write back old block
     }
 
     memcpy(&(L1Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE); // copy new block to cache line
