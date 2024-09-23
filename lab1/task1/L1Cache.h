@@ -1,5 +1,5 @@
-#ifndef SIMPLECACHE_H
-#define SIMPLECACHE_H
+#ifndef L1CACHE_H
+#define L1CACHE_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,11 +10,6 @@
 void resetTime();
 
 uint32_t getTime();
-
-/****************  Constants & Masks ***************/
-long int offset_mask = 0b0000000000111111;    // offset bits
-long int idx_mask    = 0b0011111111000000;    // index bits
-long int tag_mask    = 0b1100000000000000;    // tag bits
 
 /****************  RAM memory (byte addressable) ***************/
 void accessDRAM(uint32_t, uint8_t *, uint32_t);

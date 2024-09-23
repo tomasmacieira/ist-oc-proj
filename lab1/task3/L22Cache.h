@@ -1,5 +1,5 @@
-#ifndef SIMPLECACHE_H
-#define SIMPLECACHE_H
+#ifndef L22CACHE_H
+#define L22CACHE_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,14 +10,6 @@
 void resetTime();
 
 uint32_t getTime();
-
-/****************  Constants & Masks ***************/
-long int offset_mask    = 0b0000000000111111;    // offset bits
-long int l1_idx_mask    = 0b0011111111000000;    // L1 index bits
-long int l2_idx_mask    = 0b0111111111000000;    // L2 index bits
-long int l22_idx_mask   = 0b0011111111000000;    // L2 index bits
-long int tag_mask       = 0b1000000000000000;    // tag bits
-long int first_idx_bit  = 0b0100000000000000;    // Used to restore the most significant idx bit on l22 cache
 
 /****************  RAM memory (byte addressable) ***************/
 void accessDRAM(uint32_t, uint8_t *, uint32_t);
@@ -37,8 +29,8 @@ typedef struct CacheLine {
 typedef struct Set {
   CacheLine lineOne;
   CacheLine lineTwo;
-  uint8_t LRU;
-} Set;
+  uint8_t LRU;                      // LRU = 0 -> least recently used line is lineOne
+} Set;                              // LRU = 1 -> least recently used line is lineTwo
 
 typedef struct Cache {
   uint32_t init;

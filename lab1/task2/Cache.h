@@ -1,6 +1,12 @@
 #ifndef CACHE_H
 #define CACHE_H
 
+/****************  Constants & Masks ***************/
+#define offset_mask 0b0000000000111111              // offset bits
+#define l1_idx_mask 0b0011111111000000              // L1 index bits
+#define l2_idx_mask 0b0111111111000000              // L2 index bits
+#define tag_mask    0b1000000000000000              // tag bits
+
 #define DRAM_SIZE (1024 * BLOCK_SIZE)               // in bytes, 1024 * 16 * 4 = 65535 = 2¹6, 16 bits for the address
                                                     // 16 - 6 for offset - 9 bits for idx = 1 bits for tag
 

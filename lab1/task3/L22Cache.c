@@ -43,29 +43,29 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
   /* init cache */
   if (Cache1.init == 0) {
-    for (index = 0; index < L1_LINENO; index++) { // Go through every line in the block
+    for (index = 0; index < L1_LINENO; index++) {         // Go through every line in the block
         Cache1.lines[index].Valid = 0;
     }
     Cache1.init = 1;
   }
 
-  offset = address & offset_mask;                 // Get offset
-  index = (address & l1_idx_mask) >> 6;           // Get index
-  Tag = address >> 14;                            // Get tag
+  offset = address & offset_mask;                         // Get offset (bits 0-5)
+  index = (address & l1_idx_mask) >> 6;                   // Get index  (bits 6-13) and remove the offset bits
+  Tag = address >> 14;                                    // Get tag and remove the 8 idx bits + 6 offset bits
 
   CacheLine *Line = &Cache1.lines[index];
 
-  MemAddress = address >> 6;                      // Remove offset from the address
-  MemAddress = MemAddress << 6;                   // Restore removed bits with 0's
+  MemAddress = address >> 6;                              // Remove offset from the address
+  MemAddress = MemAddress << 6;                           // Restore removed bits with 0's
 
   /* access Cache*/
 
-  if (!Line->Valid || Line->Tag != Tag) {          // if block not present - miss
-    accessL2(address, TempBlock, MODE_READ);       // search for block in L2
+  if (!Line->Valid || Line->Tag != Tag) {                 // if block not present - miss
+    accessL2(address, TempBlock, MODE_READ);              // search for block in L2
 
     if ((Line->Valid) && (Line->Dirty)) {                                               // line has dirty block
       MemAddress = (Line->Tag << 14) | (index << 6);                                    // get address of the block in memory
-      accessL2(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);     // then write back old block
+      accessL2(MemAddress, &(L1Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);      // then write back old block
     }
 
     memcpy(&(L1Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE); // copy new block to cache line
@@ -88,106 +88,106 @@ void accessL1(uint32_t address, uint8_t *data, uint32_t mode) {
 
 void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
-  uint32_t newIndex, index, Tag, MemAddress, offset;
+  uint32_t lineTwoIndex, index, Tag, MemAddress, offset;
   uint8_t TempBlock[BLOCK_SIZE];
 
   /* init cache */
   if (Cache2.init == 0) {
-    for (index = 0; index < L2_SETNO; index++) { // Go through every line in the block
-        Cache2.sets[index].lineOne.Valid = 0;
-        Cache2.sets[index].lineTwo.Valid = 0;
+    for (index = 0; index < L2_SETNO; index++) {            // Go through every line in the block
+        Cache2.sets[index].lineOne.Valid = 0;               // Setting up valid bits on both lines of the set
+        Cache2.sets[index].lineTwo.Valid = 0;               // Default LRU is set for the first line
         Cache2.sets[index].LRU = 0;
     }
     Cache2.init = 1;
   }
 
-  offset = address & offset_mask;                 // Get offset
-  index = (address & l22_idx_mask) >> 6;           // Get index
-  Tag = address >> 14;                            // Get tag
+  offset = address & offset_mask;                           // Get offset (bits 0-5)
+  index = (address & l22_idx_mask) >> 6;                    // Get index  (bits 6-13) and remove the 6 offset bits
+  Tag = address >> 14;                                      // Get tag and remove the 6 offset bits + 8 idx bits
 
-  CacheLine *lineOne = &Cache2.sets[index].lineOne;
-  CacheLine *lineTwo = &Cache2.sets[index].lineTwo;
-  Set *Set = &Cache2.sets[index];
-  uint8_t line1_Tag = Set->lineOne.Tag;
-  int set_side = 0;                           // Target address is located in left or right side of set
-  if (line1_Tag != Tag) {set_side = 1;}
+  Set *Set = &Cache2.sets[index];                           // Set selected by the index
+  CacheLine *lineOne = &Cache2.sets[index].lineOne;         // Reference for the first line in the selected set
+  CacheLine *lineTwo = &Cache2.sets[index].lineTwo;         // Reference for the second line in the selected set
 
-  MemAddress = address >> 6;                      // Remove offset from the address
-  MemAddress = MemAddress << 6;                   // Restore removed bits with 0's
+  uint8_t line1_Tag = Set->lineOne.Tag;                     // lineOne tag used to find the corresponding requested tag
+  int set_side = 0;                                         // Target address is located in left or right side of set
+  if (line1_Tag != Tag) {set_side = 1;}                     // Swap to lineTwo
+
+  MemAddress = address >> 6;                                // Remove offset from the address
+  MemAddress = MemAddress << 6;                             // Restore removed bits with 0's
 
   /* access Cache*/
 
+  // CASE 1: Both lines are invalid or lineTwo tag doest not correspond
   if ((!lineOne->Valid && !lineTwo->Valid) || (!lineOne->Valid && lineTwo->Tag != Tag)) {
-    accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
-    memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);                // copy new block to cache line
+    accessDRAM(MemAddress, TempBlock, MODE_READ);                                             // get new block from DRAM
+    memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);                 // copy new block to cache line
+
     lineOne->Valid = 1;
     lineOne->Tag = Tag;
     lineOne->Dirty = 0;
-    Set->LRU = 1;       // Line two (1) was the least recently used 
-  } else if ((!lineTwo->Valid && lineOne->Tag != Tag)) {
+    Set->LRU = 1;                 // Line two (1) was the least recently used 
+  } 
+  // CASE 2: lineTwo is invalid and lineOne tag does not correspond
+  else if ((!lineTwo->Valid && lineOne->Tag != Tag)) {
     accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
-    newIndex = index || first_idx_bit;                                                // Used to access the second line in set
-    memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
+    lineTwoIndex = index || first_idx_bit;                                                   // Used to access the second line in set
+    memcpy(&(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);         // copy new block to cache line
+
     lineTwo->Valid = 1;
     lineTwo->Tag = Tag;
     lineTwo->Dirty = 0;
-    Set->LRU = 0;     // Line one (0) was the least recently used
-  } else if (lineOne->Tag != Tag && lineTwo->Tag != Tag) {                        // Both are valid and have different tags
-      if (Set->LRU == 0) {          // Replace the first line
-          accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
+    Set->LRU = 0;                 // Line one (0) was the least recently used
+  }
+  // CASE 3: Both lines are valid and have different tags from the requested one 
+  else if (lineOne->Tag != Tag && lineTwo->Tag != Tag) {                        
+      if (Set->LRU == 0) {                                                                   // if lineOne (0) is LRU -> Replace it
+          accessDRAM(MemAddress, TempBlock, MODE_READ);                                      // get new block from DRAM
+
           if (lineOne->Dirty) {
-            MemAddress = (lineOne->Tag << 14) | (index << 6);                // get address of the block in memory
-            accessDRAM(MemAddress, &(L2Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
+            MemAddress = (lineOne->Tag << 14) | (index << 6);                                // get address of the block in memory
+            accessDRAM(MemAddress, &(L2Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);   // then write back old block
           }
-          memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
+          
+          memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);          // copy new block to cache line
           lineOne->Valid = 1;
           lineOne->Tag = Tag;
           lineOne->Dirty = 0;
-      } else {
-        accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
+
+      } 
+      else {                                                                                 // if lineTwo (1) is LRU -> Replace it
+        accessDRAM(MemAddress, TempBlock, MODE_READ);                                        // get new block from DRAM
+
           if (lineTwo->Dirty) {
-            MemAddress = (lineTwo->Tag << 14) | (index << 6);                // get address of the block in memory
-            newIndex = index || first_idx_bit;
-            accessDRAM(MemAddress, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
+            MemAddress = (lineTwo->Tag << 14) | (index << 6);                                       // get address of the block in memory
+            lineTwoIndex = index || first_idx_bit;
+            accessDRAM(MemAddress, &(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), MODE_WRITE);   // then write back old block
           }
-          memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
+          memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);                 // copy new block to cache line
           lineTwo->Valid = 1;
           lineTwo->Tag = Tag;
           lineTwo->Dirty = 0;
       }
   }
-  /*
-  if ((!lineOne->Valid && lineTwo->Tag != Tag) || (!lineTwo->Valid && lineOne->Tag != Tag) ||
-      (lineOne->Tag != Tag && lineTwo->Tag != Tag) || (!lineOne->Valid && !lineTwo->Valid)) {  // if block not present - miss
-    accessDRAM(MemAddress, TempBlock, MODE_READ);                   // get new block from DRA
 
-    if ((lruLine->Valid) && (lruLine->Dirty)) {                           // line has dirty block
-      MemAddress = (lruLine->Tag << 14) | (index << 6);                // get address of the block in memory
-      newIndex = index || ((Tag << 14) && tag_mask); 
-      accessDRAM(MemAddress, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
-    }
-
-    memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE); // copy new block to cache line
-    lruLine->Valid = 1;
-    lruLine->Tag = Tag;
-    lruLine->Dirty = 0;
-  } // if miss, then replaced with the correct block*/
-
-  if (mode == MODE_READ) {    // read data from cache line
-    if (set_side == 0) {
-      memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1
-    } else {
-      memcpy(data, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1
+  // if miss, then replaced with the correct block
+  if (mode == MODE_READ) {                                                        // read data from cache line
+    if (set_side == 0) {                                                          // lineOne is LRU
+      memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);         // Write back to L1 (lineOne index)
+    } 
+    else {                                                                        // lineTo is LRU
+      memcpy(data, &(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), WORD_SIZE);  // Write back to L1 (lineTwo index)
     }
     time += L2_READ_TIME;
   }
 
-  if (mode == MODE_WRITE) { // write data from cache line
-    if (set_side == 0) {
-      memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);                     // Write back to L1
+  if (mode == MODE_WRITE) {                                                        // write data from cache line
+    if (set_side == 0) {                                                           // lineOne is LRU
+      memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);          // Write back to L1 (lineOne index)
       lineOne->Dirty = 1;
-    } else {
-      memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), data, WORD_SIZE);                     // Write back to L1
+    } 
+    else {                                                                         // lineTo is LRU
+      memcpy(&(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), data, WORD_SIZE);   // Write back to L1 (lineTwo index)
       lineTwo->Dirty = 1;
     }
     time += L2_WRITE_TIME;
