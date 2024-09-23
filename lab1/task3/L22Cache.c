@@ -1,11 +1,11 @@
-#include "L2Cache.h"
+#include "L22Cache.h"
 
 uint8_t L1Cache[L1_SIZE];
 uint8_t L2Cache[L2_SIZE];
 uint8_t DRAM[DRAM_SIZE];
 uint32_t time;
 Cache Cache1;
-CacheL2 Cache2;
+Cache Cache2;
 
 /**************** Time Manipulation ***************/
 void resetTime() { time = 0; }
