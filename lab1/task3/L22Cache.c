@@ -107,8 +107,10 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
   CacheLine *lineOne = &Cache2.sets[index].lineOne;
   CacheLine *lineTwo = &Cache2.sets[index].lineTwo;
-  CacheLine *lruLine;
   Set *Set = &Cache2.sets[index];
+  uint8_t line1_Tag = Set->lineOne.Tag;
+  int set_side = 0;                           // Target address is located in left or right side of set
+  if (line1_Tag != Tag) {set_side = 1;}
 
   MemAddress = address >> 6;                      // Remove offset from the address
   MemAddress = MemAddress << 6;                   // Restore removed bits with 0's
@@ -123,6 +125,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
     lineOne->Dirty = 0;
     Set->LRU = 1;       // Line two (1) was the least recently used 
   } else if ((!lineTwo->Valid && lineOne->Tag != Tag)) {
+    accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
     newIndex = index || first_idx_bit;                                                // Used to access the second line in set
     memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
     lineTwo->Valid = 1;
@@ -171,14 +174,23 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
   } // if miss, then replaced with the correct block*/
 
   if (mode == MODE_READ) {    // read data from cache line
-    memcpy(data, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1
+    if (set_side == 0) {
+      memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1
+    } else {
+      memcpy(data, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1
+    }
     time += L2_READ_TIME;
   }
 
   if (mode == MODE_WRITE) { // write data from cache line
-    memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), data, WORD_SIZE);                     // Write back to L1
+    if (set_side == 0) {
+      memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);                     // Write back to L1
+      lineOne->Dirty = 1;
+    } else {
+      memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), data, WORD_SIZE);                     // Write back to L1
+      lineTwo->Dirty = 1;
+    }
     time += L2_WRITE_TIME;
-    lruLine->Dirty = 1;
   }
 }
 
