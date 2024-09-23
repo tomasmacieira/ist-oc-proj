@@ -117,7 +117,8 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
   /* access Cache*/
 
-  if ((!lineOne->Valid && lineOne->Tag != Tag) || (!lineTwo->Valid && lineTwo->Tag != Tag)) {  // if block not present - miss
+  if ((!lineOne->Valid && lineTwo->Tag != Tag) || (!lineTwo->Valid && lineOne->Tag != Tag) ||
+      (lineOne->Tag != Tag && lineTwo->Tag != Tag) || (!lineOne->Valid && !lineTwo->Valid)) {  // if block not present - miss
     accessDRAM(MemAddress, TempBlock, MODE_READ);                   // get new block from DRAM
 
     if (LRU_line == 0) { lruLine = lineOne;}        // Find the least reused line, aka 0 -> 1st line, 1 -> second line
