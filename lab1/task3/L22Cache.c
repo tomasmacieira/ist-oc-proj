@@ -110,19 +110,53 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
   CacheLine *lruLine;
   Set *Set = &Cache2.sets[index];
 
-  uint8_t LRU_line = Set->LRU;
-
   MemAddress = address >> 6;                      // Remove offset from the address
   MemAddress = MemAddress << 6;                   // Restore removed bits with 0's
 
   /* access Cache*/
 
+  if ((!lineOne->Valid && !lineTwo->Valid) || (!lineOne->Valid && lineTwo->Tag != Tag)) {
+    accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
+    memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);                // copy new block to cache line
+    lineOne->Valid = 1;
+    lineOne->Tag = Tag;
+    lineOne->Dirty = 0;
+    Set->LRU = 1;       // Line two (1) was the least recently used 
+  } else if ((!lineTwo->Valid && lineOne->Tag != Tag)) {
+    newIndex = index || first_idx_bit;                                                // Used to access the second line in set
+    memcpy(&(L2Cache[(newIndex * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
+    lineTwo->Valid = 1;
+    lineTwo->Tag = Tag;
+    lineTwo->Dirty = 0;
+    Set->LRU = 0;     // Line one (0) was the least recently used
+  } else if (lineOne->Tag != Tag && lineTwo->Tag != Tag) {                        // Both are valid and have different tags
+      if (Set->LRU == 0) {          // Replace the first line
+          accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
+          if (lineOne->Dirty) {
+            MemAddress = (lineOne->Tag << 14) | (index << 6);                // get address of the block in memory
+            accessDRAM(MemAddress, &(L2Cache[(index * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
+          }
+          memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
+          lineOne->Valid = 1;
+          lineOne->Tag = Tag;
+          lineOne->Dirty = 0;
+      } else {
+        accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
+          if (lineTwo->Dirty) {
+            MemAddress = (lineTwo->Tag << 14) | (index << 6);                // get address of the block in memory
+            newIndex = index || first_idx_bit;
+            accessDRAM(MemAddress, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), MODE_WRITE);    // then write back old block
+          }
+          memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);
+          lineTwo->Valid = 1;
+          lineTwo->Tag = Tag;
+          lineTwo->Dirty = 0;
+      }
+  }
+  /*
   if ((!lineOne->Valid && lineTwo->Tag != Tag) || (!lineTwo->Valid && lineOne->Tag != Tag) ||
       (lineOne->Tag != Tag && lineTwo->Tag != Tag) || (!lineOne->Valid && !lineTwo->Valid)) {  // if block not present - miss
-    accessDRAM(MemAddress, TempBlock, MODE_READ);                   // get new block from DRAM
-
-    if (LRU_line == 0) { lruLine = lineOne;}        // Find the least reused line, aka 0 -> 1st line, 1 -> second line
-    else { lruLine = lineTwo; }
+    accessDRAM(MemAddress, TempBlock, MODE_READ);                   // get new block from DRA
 
     if ((lruLine->Valid) && (lruLine->Dirty)) {                           // line has dirty block
       MemAddress = (lruLine->Tag << 14) | (index << 6);                // get address of the block in memory
@@ -134,7 +168,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
     lruLine->Valid = 1;
     lruLine->Tag = Tag;
     lruLine->Dirty = 0;
-  } // if miss, then replaced with the correct block
+  } // if miss, then replaced with the correct block*/
 
   if (mode == MODE_READ) {    // read data from cache line
     memcpy(data, &(L2Cache[(newIndex * BLOCK_SIZE) + offset]), WORD_SIZE);     // Write back to L1

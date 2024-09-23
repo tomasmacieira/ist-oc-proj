@@ -12,11 +12,12 @@ void resetTime();
 uint32_t getTime();
 
 /****************  Constants & Masks ***************/
-long int offset_mask  = 0b0000000000111111;    // offset bits
-long int l1_idx_mask  = 0b0011111111000000;    // L1 index bits
-long int l2_idx_mask  = 0b0111111111000000;    // L2 index bits
-long int l22_idx_mask = 0b0011111111000000;    // L2 index bits
-long int tag_mask     = 0b1000000000000000;    // tag bits
+long int offset_mask    = 0b0000000000111111;    // offset bits
+long int l1_idx_mask    = 0b0011111111000000;    // L1 index bits
+long int l2_idx_mask    = 0b0111111111000000;    // L2 index bits
+long int l22_idx_mask   = 0b0011111111000000;    // L2 index bits
+long int tag_mask       = 0b1000000000000000;    // tag bits
+long int first_idx_bit  = 0b0100000000000000;    // Used to restore the most significant idx bit on l22 cache
 
 /****************  RAM memory (byte addressable) ***************/
 void accessDRAM(uint32_t, uint8_t *, uint32_t);
