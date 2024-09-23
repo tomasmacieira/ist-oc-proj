@@ -37,6 +37,11 @@ typedef struct Cache {
   CacheLine lines[L1_LINENO];
 } Cache;
 
+typedef struct CacheL2 {
+  uint32_t init;
+  CacheLine lines[L2_LINENO];
+} CacheL2;
+
 /*********************** Interfaces *************************/
 
 void read(uint32_t, uint8_t *);
