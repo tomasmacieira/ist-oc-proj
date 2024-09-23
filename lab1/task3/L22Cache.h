@@ -12,10 +12,11 @@ void resetTime();
 uint32_t getTime();
 
 /****************  Constants & Masks ***************/
-long int offset_mask = 0b0000000000111111;    // offset bits
-long int l1_idx_mask = 0b0011111111000000;    // L1 index bits
-long int l2_idx_mask = 0b0111111111000000;    // L2 index bits
-long int tag_mask    = 0b1000000000000000;    // tag bits
+long int offset_mask  = 0b0000000000111111;    // offset bits
+long int l1_idx_mask  = 0b0011111111000000;    // L1 index bits
+long int l2_idx_mask  = 0b0111111111000000;    // L2 index bits
+long int l22_idx_mask = 0b0011111111000000;    // L2 index bits
+long int tag_mask     = 0b1000000000000000;    // tag bits
 
 /****************  RAM memory (byte addressable) ***************/
 void accessDRAM(uint32_t, uint8_t *, uint32_t);
@@ -32,6 +33,12 @@ typedef struct CacheLine {
   uint32_t Tag;
 } CacheLine;
 
+typedef struct Set {
+  CacheLine lineOne;
+  CacheLine lineTwo;
+  uint8_t LRU;
+} Set;
+
 typedef struct Cache {
   uint32_t init;
   CacheLine lines[L1_LINENO];
@@ -39,7 +46,7 @@ typedef struct Cache {
 
 typedef struct CacheL2 {
   uint32_t init;
-  CacheLine lines[L2_LINENO];
+  Set sets[L2_SETNO];
 } CacheL2;
 
 /*********************** Interfaces *************************/
