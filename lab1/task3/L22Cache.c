@@ -103,15 +103,16 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
   offset = address & offset_mask;                           // Get offset (bits 0-5)
   index = (address & l22_idx_mask) >> 6;                    // Get index  (bits 6-13) and remove the 6 offset bits
+  lineTwoIndex = index || first_idx_bit;                    // Used to access the second line in set
   Tag = address >> 14;                                      // Get tag and remove the 6 offset bits + 8 idx bits
 
   Set *Set = &Cache2.sets[index];                           // Set selected by the index
   CacheLine *lineOne = &Cache2.sets[index].lineOne;         // Reference for the first line in the selected set
   CacheLine *lineTwo = &Cache2.sets[index].lineTwo;         // Reference for the second line in the selected set
 
-  uint8_t line1_Tag = Set->lineOne.Tag;                     // lineOne tag used to find the corresponding requested tag
-  int set_side = 0;                                         // Target address is located in left or right side of set
-  if (line1_Tag != Tag) {set_side = 1;}                     // Swap to lineTwo
+  uint8_t lineOneTag = Set->lineOne.Tag;                    // lineOne tag used to find the corresponding requested tag
+  int lruLine = 0;                                          // Target address is located in either the first or second line
+  if (lineOneTag != Tag) {lruLine = 1;}                     // Swap to lineTwo
 
   MemAddress = address >> 6;                                // Remove offset from the address
   MemAddress = MemAddress << 6;                             // Restore removed bits with 0's
@@ -131,7 +132,6 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
   // CASE 2: lineTwo is invalid and lineOne tag does not correspond
   else if ((!lineTwo->Valid && lineOne->Tag != Tag)) {
     accessDRAM(MemAddress, TempBlock, MODE_READ);                                            // get new block from DRAM
-    lineTwoIndex = index || first_idx_bit;                                                   // Used to access the second line in set
     memcpy(&(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);         // copy new block to cache line
 
     lineTwo->Valid = 1;
@@ -160,7 +160,6 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
           if (lineTwo->Dirty) {
             MemAddress = (lineTwo->Tag << 14) | (index << 6);                                       // get address of the block in memory
-            lineTwoIndex = index || first_idx_bit;
             accessDRAM(MemAddress, &(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), MODE_WRITE);   // then write back old block
           }
           memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), TempBlock, BLOCK_SIZE);                 // copy new block to cache line
@@ -172,7 +171,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
 
   // if miss, then replaced with the correct block
   if (mode == MODE_READ) {                                                        // read data from cache line
-    if (set_side == 0) {                                                          // lineOne is LRU
+    if (lruLine == 0) {                                                           // lineOne is LRU
       memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);         // Write back to L1 (lineOne index)
     } 
     else {                                                                        // lineTo is LRU
@@ -182,7 +181,7 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
   }
 
   if (mode == MODE_WRITE) {                                                        // write data from cache line
-    if (set_side == 0) {                                                           // lineOne is LRU
+    if (lruLine == 0) {                                                            // lineOne is LRU
       memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);          // Write back to L1 (lineOne index)
       lineOne->Dirty = 1;
     } 
