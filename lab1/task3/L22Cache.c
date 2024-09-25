@@ -110,10 +110,6 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
   CacheLine *lineOne = &Cache2.sets[index].lineOne;         // Reference for the first line in the selected set
   CacheLine *lineTwo = &Cache2.sets[index].lineTwo;         // Reference for the second line in the selected set
 
-  uint8_t lineOneTag = Set->lineOne.Tag;                    // lineOne tag used to find the corresponding requested tag
-  int lruLine = 0;                                          // Target address is located in either the first or second line
-  if (lineOneTag != Tag) {lruLine = 1;}                     // Swap to lineTwo
-
   MemAddress = address >> 6;                                // Remove offset from the address
   MemAddress = MemAddress << 6;                             // Restore removed bits with 0's
 
@@ -167,32 +163,32 @@ void accessL2(uint32_t address, uint8_t *data, uint32_t mode) {
           lineTwo->Valid = 1;
           lineTwo->Tag = Tag;
           lineTwo->Dirty = 0;
-          Set->LRU = 0;                                                                       // Used lineTwo (1), lineOne (0) is the LRU
+          Set->LRU = 0;                                                           // Used lineTwo (1), lineOne (0) is the LRU
       }
   }
 
   // if miss, then replaced with the correct block
   if (mode == MODE_READ) {                                                        // read data from cache line
-    if (lineOne->Tag == Tag) {                                                           // lineOne is the one asked by L1 Cache
+    if (lineOne->Tag == Tag) {                                                    // lineOne is the one asked by L1 Cache
       memcpy(data, &(L2Cache[(index * BLOCK_SIZE) + offset]), WORD_SIZE);         // Write back to L1 (lineOne index)
-      Set->LRU = 1;                                                                       // Used lineOne (0), lineTwo (1) is the LRU
+      Set->LRU = 1;                                                               // Used lineOne (0), lineTwo (1) is the LRU
     } 
     else {                                                                        // lineTwo is the line asked by L1 Cache
       memcpy(data, &(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), WORD_SIZE);  // Write back to L1 (lineTwo index)
-      Set->LRU = 0;                                                                       // Used lineTwo (1), lineOne (0) is the LRU
+      Set->LRU = 0;                                                               // Used lineTwo (1), lineOne (0) is the LRU
     }
     time += L2_READ_TIME;
   }
 
   if (mode == MODE_WRITE) {                                                        // write data from cache line
-    if (lineOne->Tag == Tag) {                                                            // lineOne is the one asked by L1 Cache
+    if (lineOne->Tag == Tag) {                                                     // lineOne is the one asked by L1 Cache
       memcpy(&(L2Cache[(index * BLOCK_SIZE) + offset]), data, WORD_SIZE);          // Write back to L1 (lineOne index)
-      Set->LRU = 1;                                                                       // Used lineOne (0), lineTwo (1) is the LRU
+      Set->LRU = 1;                                                                // Used lineOne (0), lineTwo (1) is the LRU
       lineOne->Dirty = 1;
     } 
     else {                                                                         // lineTwo is the one asked by L1 Cache
       memcpy(&(L2Cache[(lineTwoIndex * BLOCK_SIZE) + offset]), data, WORD_SIZE);   // Write back to L1 (lineTwo index)
-      Set->LRU = 0;                                                                       // Used lineTwo (1), lineOne (0) is the LRU
+      Set->LRU = 0;                                                                // Used lineTwo (1), lineOne (0) is the LRU
       lineTwo->Dirty = 1;
     }
     time += L2_WRITE_TIME;
