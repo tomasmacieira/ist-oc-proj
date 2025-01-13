@@ -3,10 +3,10 @@ CFLAGS = -Wall -Wextra
 TARGET = L1Cache
 
 all:
-	$(CC) $(CFLAGS) SimpleProgram1.c L1Cache.c -o $(TARGET)
+	$(CC) $(CFLAGS) tester.c L1Cache.c -o $(TARGET)
 
 test:
-	$(CC) $(CFLAGS) SimpleProgram1.c L1Cache.c -o $(TARGET)
+	$(CC) $(CFLAGS) tester.c L1Cache.c -o $(TARGET)
 	./$(TARGET) > myout.txt
 	diff myout.txt ../tests/results_L1.txt > diff.txt
 

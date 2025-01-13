@@ -9,7 +9,7 @@
 #define tag_mask      0b1000000000000000            // tag bits
 #define first_idx_bit 0b0100000000000000            // Used to restore the most significant idx bit on L2 cache
 
-#define DRAM_SIZE     (1024 * BLOCK_SIZE)           // in bytes, 1024 * 16 * 4 = 65535 = 2¹6, 16 bits for the address
+#define DRAM_SIZE     (1024 * BLOCK_SIZE)           // in bytes, 1024 * 16 * 4 = 65535 = 2^16, 16 bits for the address
                                                     // 16 - 6 for offset - 9 bits for idx = 1 bits for tag
 
 #define WORD_SIZE     4                             // in bytes, i.e 32 bit words
